@@ -1,0 +1,28 @@
+name: SHC Pool E2E Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner_label:
+        description: "Unique runner label (must match a μVM the autoscaler will spawn)"
+        required: true
+        type: string
+
+jobs:
+  echo-on-shc:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - shc
+      - ${{ inputs.runner_label }}
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "Hello from a Firecracker μVM pool runner!"
+          echo "Triggered at: $(date -u +%FT%TZ)"
+          echo "Runner name: $RUNNER_NAME"
+          echo "Labels: $RUNNER_LABELS"
+          uname -a
+          echo "Job succeeded at: $(date -u +%FT%TZ)"
+          exit 0
