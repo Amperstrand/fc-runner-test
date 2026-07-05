@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       runner_label:
-        description: "Unique runner label (must match a μVM the autoscaler will spawn)"
+        description: "Unique runner label"
         required: true
         type: string
 
 jobs:
-  echo-on-shc:
+  go-test-on-shc:
     runs-on:
       - self-hosted
       - linux
@@ -18,11 +18,36 @@ jobs:
       - ${{ inputs.runner_label }}
     timeout-minutes: 5
     steps:
-      - run: |
-          echo "Hello from a Firecracker μVM pool runner!"
-          echo "Triggered at: $(date -u +%FT%TZ)"
-          echo "Runner name: $RUNNER_NAME"
-          echo "Labels: $RUNNER_LABELS"
+      - name: Machine info
+        run: |
+          echo "=== Running on SHC Firecracker μVM ==="
           uname -a
-          echo "Job succeeded at: $(date -u +%FT%TZ)"
-          exit 0
+          cat /etc/os-release | head -3
+          free -h | head -2
+          df -h / | head -2
+          nproc
+      - name: Checkout
+        run: |
+          # Shell-based checkout (no actions/checkout dependency)
+          # Using a tiny Go module so we don't need the full tollgate repo
+          mkdir -p /tmp/test-go && cd /tmp/test-go
+          cat > go.mod <<MOD
+          module shc-test
+          go 1.21
+          MOD
+          cat > main_test.go <<TEST
+          package main
+          import "testing"
+          func TestAdd(t *testing.T) {
+              if 1+1 != 2 { t.Error("math is broken") }
+          }
+          func TestString(t *testing.T) {
+              if "hello"+"world" != "helloworld" { t.Error("strings broken") }
+          }
+          TEST
+      - name: Go test
+        run: |
+          cd /tmp/test-go
+          go test -v -count=1 ./...
+      - name: Done
+        run: echo "Job completed at $(date -u +%FT%TZ)"
