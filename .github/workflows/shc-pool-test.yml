@@ -20,16 +20,20 @@ jobs:
     steps:
       - name: Machine info
         run: |
-          echo "=== Running on SHC Firecracker μVM ==="
-          uname -a
-          cat /etc/os-release | head -3
+          echo "=== SHC Firecracker μVM ==="
+          uname -r
+          cat /etc/os-release | head -2
           free -h | head -2
           df -h / | head -2
-          nproc
-      - name: Checkout
+          echo "CPUs: $(nproc)"
+      - name: Install Go (runtime)
         run: |
-          # Shell-based checkout (no actions/checkout dependency)
-          # Using a tiny Go module so we don't need the full tollgate repo
+          echo "Installing Go 1.24.2..."
+          curl -fsSL https://go.dev/dl/go1.24.2.linux-amd64.tar.gz | tar xz -C /usr/local/
+          ln -sf /usr/local/go/bin/go /usr/local/bin/go
+          go version
+      - name: Go test
+        run: |
           mkdir -p /tmp/test-go && cd /tmp/test-go
           cat > go.mod <<MOD
           module shc-test
@@ -45,9 +49,6 @@ jobs:
               if "hello"+"world" != "helloworld" { t.Error("strings broken") }
           }
           TEST
-      - name: Go test
-        run: |
-          cd /tmp/test-go
           go test -v -count=1 ./...
       - name: Done
-        run: echo "Job completed at $(date -u +%FT%TZ)"
+        run: echo "Job completed at $(date -u +%FT%TZ) on $(hostname)"
